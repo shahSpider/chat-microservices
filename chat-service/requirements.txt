@@ -1,3 +1,7 @@
 fastapi
-uvicorn
-redis
+uvicorn[standard]
+sqlalchemy
+psycopg2-binary   # PostgreSQL driver
+databases         # optional: async DB access
+python-jose       # for JWT decoding if you secure sockets
+httpx             # if you call auth-service APIs
