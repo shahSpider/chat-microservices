@@ -18,13 +18,19 @@ class RegisterSerializer(serializers.ModelSerializer):
             password=validated_data['password']
         )
 
+class RoomMembershipSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RoomMembership
+        fields = ('user', 'is_admin')
+        
 class RoomSerializer(serializers.ModelSerializer):
     owner = serializers.ReadOnlyField(source='owner.username')
     members_count = serializers.SerializerMethodField()
+    members = RoomMembershipSerializer(source="memberships", many=True, read_only=True)
 
     class Meta:
         model = Room
-        fields = ('id', 'name', 'is_private', 'owner', 'members_count', 'created_at')
+        fields = ('id', 'name', 'is_private', 'owner', 'members', 'members_count', 'created_at')
 
     def get_members_count(self, obj):
         return obj.members.count()

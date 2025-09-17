@@ -24,6 +24,11 @@ class RoomViewSet(viewsets.ModelViewSet):
         user = self.request.user
         return Room.objects.filter(Q(is_private=False) | Q(members=user)).distinct().order_by('-created_at')
 
+    def get_object(self):
+        if self.action in ['join', 'add_member']:
+            return Room.objects.get(pk=self.kwargs['pk'])
+        return super().get_object()
+    
     def perform_create(self, serializer):
         room = serializer.save(owner=self.request.user)
         RoomMembership.objects.create(room=room, user=self.request.user, is_admin=True)
@@ -35,3 +40,9 @@ class RoomViewSet(viewsets.ModelViewSet):
             return Response({'detail': 'Room is private.'}, status=status.HTTP_403_FORBIDDEN)
         _, created = RoomMembership.objects.get_or_create(room=room, user=request.user)
         return Response({'joined': True, 'room_id': room.id}, status=status.HTTP_200_OK)
+    
+    @action(detail=True, methods=['post'])
+    def add_member(self, request, pk=None):
+        room = Room.objects.get(pk=pk)
+        membership_status = RoomMembership.objects.create(room=room, user=self.request.user, is_admin=False)
+        return Response({'room': room.name, 'membership_status': membership_status.joined_at})
