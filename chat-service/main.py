@@ -5,6 +5,8 @@ from app.database import Base, engine, SessionLocal
 from app import models
 from jose import jwt, JWTError
 import sys
+from app.notifications import notify_users
+
 
 SECRET_KEY="django-insecure-snckc&+mm8=rcp3ku%)c=pa7y7n=na7-(9r!eb)yii!03q$jm)"
 ALGORITHM = "HS256"
@@ -47,6 +49,9 @@ async def websocket_endpoint(websocket: WebSocket, room_id: int):
             db.commit()
             db.refresh(msg)
             await manager.broadcast(room_id, f"Room {room_id} | {data}")
+            
+            room_members = [1, 2, 3]
+            notify_users(room_members, data)
     except WebSocketDisconnect:
         manager.disconnect(room_id, websocket)
     finally:

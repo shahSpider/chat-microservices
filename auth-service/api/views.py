@@ -5,6 +5,9 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from .models import Room, RoomMembership
 from .serializers import RegisterSerializer, RoomSerializer
+import requests
+import logging
+logger = logging.getLogger(__name__)
 
 class RegisterView(APIView):
     permission_classes = [permissions.AllowAny]
@@ -14,6 +17,16 @@ class RegisterView(APIView):
         ser.is_valid(raise_exception=True)
         user = ser.save()
         return Response({'id': user.id, 'username': user.username}, status=status.HTTP_201_CREATED)
+
+    def get(self, request):
+        user = request.user
+        return Response({
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+        })
 
 class RoomViewSet(viewsets.ModelViewSet):
     serializer_class = RoomSerializer

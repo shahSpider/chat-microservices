@@ -10,7 +10,7 @@ services:
       POSTGRES_PASSWORD: chatpass
       POSTGRES_DB: chatdb
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
@@ -19,7 +19,7 @@ services:
     container_name: chat_redis
     restart: always
     ports:
-      - "6379:6379"
+      - "6380:6379"
 
   auth-service:
     build: ./auth-service
@@ -52,5 +52,14 @@ services:
       - redis
       - db
 
+  frontend:
+    build: ./frontend
+    container_name: chat_frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app        # Mount local code
+      - /app/node_modules      # Avoid overwriting node_modules
+    command: ["npm", "run", "dev", "--", "--host"]
 volumes:
   postgres_data:
