@@ -43,11 +43,13 @@ class RoomViewSet(viewsets.ModelViewSet):
         return super().get_object()
     
     def perform_create(self, serializer):
+        print(f"Creating room with data: {serializer.validated_data}")
         room = serializer.save(owner=self.request.user)
         RoomMembership.objects.create(room=room, user=self.request.user, is_admin=True)
 
     @action(detail=True, methods=['post'])
     def join(self, request, pk=None):
+        print(f"User {request.user} attempting to join room {pk}")
         room = self.get_object()
         if room.is_private and room.owner != request.user:
             return Response({'detail': 'Room is private.'}, status=status.HTTP_403_FORBIDDEN)

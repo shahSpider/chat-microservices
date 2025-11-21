@@ -10,7 +10,7 @@ export const useAuthentication = () => {
 
     useEffect(() => {
         const auth = async () => {
-            const accessToken = localStorage.getItem(ACCESS_TOKEN);
+            const accessToken = localStorage.getItem('access_token');
             
 
             if (accessToken) {
@@ -38,11 +38,11 @@ export const useAuthentication = () => {
         const refreshToken = localStorage.getItem(REFRESH_TOKEN);
 
         try {
-            const res = await api.post('/auth/token/refresh/', {
+            const res = await api.post('/token/refresh/', {
                 refresh: refreshToken,
             });
             if (res.status === 200) {
-                localStorage.setItem(ACCESS_TOKEN, res.data.access);
+                localStorage.setItem('access_token', res.data.access);
                 setIsAuthenticated(true);
             } else {
                 setIsAuthenticated(false);
@@ -56,8 +56,8 @@ export const useAuthentication = () => {
  
 
     const logout = () => {
-        localStorage.removeItem(ACCESS_TOKEN);
-        localStorage.removeItem(REFRESH_TOKEN);
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
         setIsAuthenticated(false);
         window.location.href = '/';
     };

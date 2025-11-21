@@ -9,7 +9,7 @@ const AuthPage = ({ initialMethod }) => {
         setMethod(initialMethod);
     }, [initialMethod]);
 
-    const route = method === 'login' ? 'auth/token/' : 'auth/register/';
+    const route = method === 'login' ? '/token/' : '/register/';
 
     return (
         <div>

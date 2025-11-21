@@ -48,7 +48,7 @@ const Conversation = ({ conversationId, currentUserId, onBack }) => {
 
   useEffect(() => {
     if (!conversationId) return;
-    const token = localStorage.getItem(ACCESS_TOKEN);
+    const token = localStorage.getItem('access_token');
 
     const websocket = new WebSocket(`ws://localhost:8000/ws/chat/${conversationId}/?token=${token}`);
 

@@ -21,10 +21,11 @@ const AuthForm = ({ route, method }) => {
 
         try {
             const res = await api.post(route, { username, password });
+            console.log(`Response from AUTHFORM:`, res.data);
 
             if (method === 'login') {
-                localStorage.setItem(ACCESS_TOKEN, res.data.access);
-                localStorage.setItem(REFRESH_TOKEN, res.data.refresh);
+                localStorage.setItem('access_token', res.data.access);
+                localStorage.setItem('refresh_token', res.data.refresh);
                 navigate("/chats");
                 window.location.reload();
             }

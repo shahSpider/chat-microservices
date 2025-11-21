@@ -16,7 +16,7 @@ const ChatList = () => {
   useEffect(() => {
     const initializeData = async () => {
       try {
-        const token = localStorage.getItem(ACCESS_TOKEN);
+        const token = localStorage.getItem('access_token');
         if (token) {
           const decodedToken = jwtDecode(token);
           setCurrentUserId(decodedToken.user_id);

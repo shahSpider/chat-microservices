@@ -23,6 +23,7 @@ services:
 
   auth-service:
     build: ./auth-service
+    working_dir: /app
     command: python manage.py runserver 0.0.0.0:8000
     volumes:
       - ./auth-service:/app
@@ -34,6 +35,7 @@ services:
 
   chat-service:
     build: ./chat-service
+    working_dir: /app
     command: uvicorn main:app --host 0.0.0.0 --port 8001 --reload
     volumes:
       - ./chat-service:/app
@@ -45,6 +47,7 @@ services:
 
   notifications-service:
     build: ./notifications-service
+    working_dir: /app
     command: celery -A tasks worker --loglevel=info
     volumes:
       - ./notifications-service:/app
@@ -55,11 +58,14 @@ services:
   frontend:
     build: ./frontend
     container_name: chat_frontend
+    working_dir: /app
     ports:
       - "5173:5173"
     volumes:
       - ./frontend:/app        # Mount local code
       - /app/node_modules      # Avoid overwriting node_modules
+    environment:
+      - CHOKIDAR_USEPOLLING=true
     command: ["npm", "run", "dev", "--", "--host"]
 volumes:
   postgres_data:
