@@ -24,9 +24,10 @@ services:
   auth-service:
     build: ./auth-service
     working_dir: /app
-    command: python manage.py runserver 0.0.0.0:8000
+    command: daphne -b 0.0.0.0 -p 8000 auth_app.asgi:application
     volumes:
       - ./auth-service:/app
+      - static_volume:/staticfiles
     ports:
       - "8000:8000"
     depends_on:
@@ -69,3 +70,4 @@ services:
     command: ["npm", "run", "dev", "--", "--host"]
 volumes:
   postgres_data:
+  static_volume:

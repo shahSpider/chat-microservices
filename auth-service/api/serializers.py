@@ -1,36 +1,45 @@
-from django.contrib.auth import get_user_model
 from rest_framework import serializers
-from .models import Room, RoomMembership
+from .models import *
+from django.contrib.auth.models import User
 
-User = get_user_model()
-
-class RegisterSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, min_length=6)
-
+class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'password')
+        fields = ['username', 'password']
 
     def create(self, validated_data):
-        return User.objects.create_user(
+        user = User.objects.create_user(
             username=validated_data['username'],
-            email=validated_data.get('email'),
             password=validated_data['password']
         )
+        return user
 
-class RoomMembershipSerializer(serializers.ModelSerializer):
+class UserListSerializer(serializers.ModelSerializer):
     class Meta:
-        model = RoomMembership
-        fields = ('user', 'is_admin')
-        
-class RoomSerializer(serializers.ModelSerializer):
-    owner = serializers.ReadOnlyField(source='owner.username')
-    members_count = serializers.SerializerMethodField()
-    members = RoomMembershipSerializer(source="memberships", many=True, read_only=True)
+        model = User
+        fields = ['id', 'username']
 
+class ConversationSerializer(serializers.ModelSerializer):
+    participants = UserListSerializer(many=True, read_only=True)
     class Meta:
-        model = Room
-        fields = ('id', 'name', 'is_private', 'owner', 'members', 'members_count', 'created_at')
+        model = Conversation
+        fields = ['id', 'participants', 'created_at']
+    
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        return representation
+    
+class MessageSerializer(serializers.ModelSerializer):
+    sender = UserListSerializer()
+    participants = serializers.SerializerMethodField()
+    class Meta:
+        model = Message
+        fields = ['id', 'conversation', 'sender', 'content', 'timestamp', 'participants']
+    
+    def get_participants(self, obj):
+        return UserListSerializer(obj.conversation.participants.all(), many=True).data
 
-    def get_members_count(self, obj):
-        return obj.members.count()
+class CreateMessageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Message
+        fields = ['conversation', 'content']

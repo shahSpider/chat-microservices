@@ -1,63 +1,115 @@
-from django.db.models import Q
-from rest_framework import viewsets, permissions, status
-from rest_framework.views import APIView
+from rest_framework import generics, permissions, status
 from rest_framework.response import Response
-from rest_framework.decorators import action
-from .models import Room, RoomMembership
-from .serializers import RegisterSerializer, RoomSerializer
-import requests
-import logging
-logger = logging.getLogger(__name__)
+from rest_framework.permissions import IsAuthenticated
+from django.contrib.auth.models import User
+from django.shortcuts import get_object_or_404
+from .models import *
+from .serializers import *
+from rest_framework.exceptions import PermissionDenied
+from rest_framework.decorators import api_view
 
-class RegisterView(APIView):
-    permission_classes = [permissions.AllowAny]
 
-    def post(self, request):
-        ser = RegisterSerializer(data=request.data)
-        ser.is_valid(raise_exception=True)
-        user = ser.save()
-        return Response({'id': user.id, 'username': user.username}, status=status.HTTP_201_CREATED)
+class CreateUserView(generics.CreateAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
 
-    def get(self, request):
-        user = request.user
-        return Response({
-            "id": user.id,
-            "username": user.username,
-            "email": user.email,
-            "first_name": user.first_name,
-            "last_name": user.last_name,
-        })
 
-class RoomViewSet(viewsets.ModelViewSet):
-    serializer_class = RoomSerializer
-    permission_classes = [permissions.IsAuthenticated]
+class UserListView(generics.ListAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserListSerializer
+    permission_classes = [IsAuthenticated]
+
+class ConversationListCreateView(generics.ListCreateAPIView):
+
+    serializer_class = ConversationSerializer
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        # List public rooms + rooms the user is a member of
-        user = self.request.user
-        return Room.objects.filter(Q(is_private=False) | Q(members=user)).distinct().order_by('-created_at')
+        return (Conversation.objects
+                .filter(participants=self.request.user)
+                .prefetch_related('participants'))
 
-    def get_object(self):
-        if self.action in ['join', 'add_member']:
-            return Room.objects.get(pk=self.kwargs['pk'])
-        return super().get_object()
-    
+    def create(self, request, *args, **kwargs):
+        participants_data = request.data.get('participants', [])
+
+        if len(participants_data) != 2:
+            return Response(
+                {'error': 'A conversation needs exactly two participants'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        print(request.user.id, participants_data)
+        if str(request.user.id) not in map(str, participants_data):
+            return Response(
+                {'error': 'You are not a participant of this conversation'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        users = User.objects.filter(id__in=participants_data)
+        if users.count() != 2:
+            return Response(
+                {'error': 'A conversation needs exactly two participants'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        existing_conversation = Conversation.objects.filter(
+            participants__id=participants_data[0]
+        ).filter(
+            participants__id=participants_data[1]
+        ).distinct()
+
+        if existing_conversation.exists():
+            return Response(
+                {'error': 'A conversation already exists between these participants'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        conversation = Conversation.objects.create()
+        conversation.participants.set(users)
+
+        #serialize the conversation
+        serializer = self.get_serializer(conversation)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+class MessageListCreateView(generics.ListCreateAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        conversation_id = self.kwargs['conversation_id']
+        conversation = self.get_conversation(conversation_id)
+
+        return conversation.messages.order_by('timestamp')
+
+    def get_serializer_class(self):
+        if self.request.method == 'POST':
+            return CreateMessageSerializer
+        return MessageSerializer
+
     def perform_create(self, serializer):
-        print(f"Creating room with data: {serializer.validated_data}")
-        room = serializer.save(owner=self.request.user)
-        RoomMembership.objects.create(room=room, user=self.request.user, is_admin=True)
+        #fetch conversation and validate user participation
+        print("Incoming conversation", self.request.data)
+        conversation_id = self.kwargs['conversation_id']
+        conversation = self.get_conversation(conversation_id)
 
-    @action(detail=True, methods=['post'])
-    def join(self, request, pk=None):
-        print(f"User {request.user} attempting to join room {pk}")
-        room = self.get_object()
-        if room.is_private and room.owner != request.user:
-            return Response({'detail': 'Room is private.'}, status=status.HTTP_403_FORBIDDEN)
-        _, created = RoomMembership.objects.get_or_create(room=room, user=request.user)
-        return Response({'joined': True, 'room_id': room.id}, status=status.HTTP_200_OK)
-    
-    @action(detail=True, methods=['post'])
-    def add_member(self, request, pk=None):
-        room = Room.objects.get(pk=pk)
-        membership_status = RoomMembership.objects.create(room=room, user=self.request.user, is_admin=False)
-        return Response({'room': room.name, 'membership_status': membership_status.joined_at})
+        serializer.save(sender=self.request.user, conversation=conversation)
+
+    def get_conversation(self, conversation_id):
+        #check if user is a participant of the conversation, it helps to fetch the conversation and 
+        #validate the participants
+        conversation = get_object_or_404(Conversation, id=conversation_id)
+        if self.request.user not in conversation.participants.all():
+            raise PermissionDenied('You are not a participant of this conversation')
+        return conversation
+
+class MessageRetrieveDestroyView(generics.RetrieveDestroyAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = MessageSerializer
+
+    def get_queryset(self):
+        conversation_id = self.kwargs['conversation_id']
+        return Message.objects.filter(conversation__id=conversation_id)
+
+    def perform_destroy(self, instance):
+        if instance.sender != self.request.user:
+            raise PermissionDenied('You are not the sender of this message')
+        instance.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+

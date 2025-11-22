@@ -1,23 +1,28 @@
 from django.db import models
-from django.contrib.auth import get_user_model
+from django.contrib.auth.models import User
+from django.db.models import Prefetch
 
-User = get_user_model()
-
-class Room(models.Model):
-    name = models.CharField(max_length=120, unique=True)
-    is_private = models.BooleanField(default=False)
-    owner = models.ForeignKey(User, related_name='owned_rooms', on_delete=models.CASCADE)
-    members = models.ManyToManyField(User, through='RoomMembership', related_name='rooms')
+class ConversationManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().prefetch_related(
+            Prefetch('participants', queryset=User.objects.only('id', 'username'))
+        )
+    
+class Conversation(models.Model):
+    participants = models.ManyToManyField(User, related_name='conversations')
     created_at = models.DateTimeField(auto_now_add=True)
 
+    objects = ConversationManager()
+
     def __str__(self):
-        return self.name
+        participants_name = " ,".join([user.username for user in self.participants.all()])
+        return f"Conversation with {participants_name}"
 
-class RoomMembership(models.Model):
-    room = models.ForeignKey(Room, related_name='memberships', on_delete=models.CASCADE)
-    user = models.ForeignKey(User, related_name='memberships', on_delete=models.CASCADE)
-    is_admin = models.BooleanField(default=False)
-    joined_at = models.DateTimeField(auto_now_add=True)
+class Message(models.Model):
+    conversation = models.ForeignKey(Conversation, related_name='messages', on_delete=models.CASCADE)
+    sender = models.ForeignKey(User, related_name='messages', on_delete=models.CASCADE)
+    content = models.TextField()
+    timestamp = models.DateTimeField(auto_now_add=True)
 
-    class Meta:
-        unique_together = ('room', 'user')
+    def __str__(self):
+        return f'Message from {self.sender.username} in {self.content[:20]}'
