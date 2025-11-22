@@ -25,7 +25,7 @@ const ChatList = () => {
         const userResponse = await api.get("users/");
         setUsers(userResponse.data);
 
-        const conversationResponse = await api.get("conversations/");
+        const conversationResponse = await api.get("chat/conversations/");
         setConversations(conversationResponse.data);
       } catch (error) {
         console.error("Error initializing data:", error);
@@ -39,7 +39,7 @@ const ChatList = () => {
     if (selectedUser && currentUserId) {
       const participants = [selectedUser, currentUserId];
       try {
-        const response = await api.post("conversations/", { participants });
+        const response = await api.post("chat/conversations/", { participants });
         setConversations([...conversations, response.data]);
         setActiveConversation(response.data);
         setErrorMessage("");

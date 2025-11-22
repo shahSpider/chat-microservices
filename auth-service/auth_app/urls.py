@@ -1,20 +1,18 @@
 from django.contrib import admin
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-from api.views import RegisterView, RoomViewSet
-
-router = DefaultRouter()
-router.register(r'rooms', RoomViewSet, basename='room')
+from django.urls import path
+from api.views import *
+from rest_framework_simplejwt.views import (
+    TokenObtainPairView,
+    TokenRefreshView,
+)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-
-    # Auth
-    path('api/register/', RegisterView.as_view(), name='register'),
-    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-
-    # Rooms
-    path('api/', include(router.urls)),
+    path('register/', CreateUserView.as_view(), name='register'),
+    path('users/', UserListView.as_view(), name='user-list'),
+    path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('chat/conversations/', ConversationListCreateView.as_view(), name='conversation_list'),
+    path('chat/conversations/<int:conversation_id>/messages/', MessageListCreateView.as_view(), name='message_list_create'),
+    path('chat/conversations/<int:conversation_id>/messages/<int:pk>/', MessageRetrieveDestroyView.as_view(), name='message_retrieve_destroy'),
 ]
